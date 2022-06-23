@@ -74,8 +74,8 @@ def plot_presses(
     assert df[response].isin(["target", "nontarget", "reset"]).all()
     assert df[accuracy].isin(["correct", "undershoot", "overshoot", "selfcaught"]).all()
     assert df[timestamp].min() > 0
-    assert df[timestamp].is_monotonic_increasing
     assert df[timestamp].max() < 60*task_length
+    assert df.groupby(participant)[timestamp].apply(lambda s: s.is_monotonic_increasing).all()
 
     # Load custom default settings.
     load_matplotlib_settings()
