@@ -1,12 +1,11 @@
 """Plotting helper functions."""
 
-import os
 import pathlib
 
 # import colorcet as cc
 import matplotlib.pyplot as plt
 
-from .utils import *
+from .io import *
 
 def save_matplotlib(lores_path, hires_extension=".pdf", close=True):
     """Saves out hi-resolution matplotlib figures.

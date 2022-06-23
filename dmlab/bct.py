@@ -1,14 +1,13 @@
 """Breath-counting task module.
 """
 
-import os
 import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
-import utils
 
-from .plotting import load_matplotlib_settings, save_matplotlib
+from .io import *
+from .plotting import *
 
 
 __all__ = ["plot_presses"]
