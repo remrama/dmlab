@@ -1,27 +1,26 @@
 """Plotting helper functions."""
 
 import os
+import pathlib
 
 # import colorcet as cc
 import matplotlib.pyplot as plt
 
 from .utils import *
 
-def save_matplotlib(png_path, hires_extension="pdf"):
+def save_matplotlib(lores_path, hires_extension=".pdf", close=True):
     """Saves out hi-resolution matplotlib figures.
     Assumes there is a "hires" subdirectory within the path
     of the filename passed in, which must be also be a png filename.
     """
-    assert png_path.endswith(".png"), "Expected .png filename"
-    png_dir, png_bname = os.path.split(png_path)
-    png_bname_noext, _ = os.path.splitext(png_bname)
-    hires_dir = os.path.join(png_dir, "hires")
-    hires_bname = png_bname.replace(".png", f".{hires_extension}")
-    hires_path = os.path.join(hires_dir, hires_bname)
-    make_pathdir_if_not_exists(hires_path)
-    plt.savefig(png_path)
+    lores_path = ensure_path_is_pathlib(lores_path)
+    hires_path = lores_path.with_suffix(hires_extension)
+    hires_path = hires_path.parent / "hires" / hires_path.name
+    hires_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(lores_path)
     plt.savefig(hires_path)
-    plt.close()
+    if close:
+        plt.close()
 
 def load_matplotlib_settings():
     # plt.rcParams["figure.dpi"] = 600
@@ -38,7 +37,7 @@ def load_matplotlib_settings():
     plt.rcParams["font.size"] = 8
     plt.rcParams["axes.titlesize"] = 8
     plt.rcParams["axes.labelsize"] = 8
-    rcParams["axes.labelsize"] = 8
+    plt.rcParams["axes.labelsize"] = 8
     plt.rcParams["xtick.labelsize"] = 8
     plt.rcParams["ytick.labelsize"] = 8
     plt.rcParams["axes.linewidth"] = 0.8 # edge line width

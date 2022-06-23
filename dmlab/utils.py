@@ -1,8 +1,9 @@
 """Helper functions for the helper functions."""
 
-import os
+from pathlib import Path
 
-def make_pathdir_if_not_exists(filepath):
-    directory = os.path.dirname(filepath)
-    # if not os.path.exists(directory):
-    os.makedirs(directory, exist_ok=True)
+def ensure_path_is_pathlib(filepath):
+    if not isinstance(filepath, Path):
+        assert isinstance(filepath, str)
+        filepath = Path(filepath)
+    return filepath
