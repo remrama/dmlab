@@ -33,22 +33,24 @@ def latest_sourcepath(filepaths):
     return filepath
 
 
-def load_spss(filepath, cleanse=True):
+def load_spss(filepath):
     """Returns dataframe and metadata object."""
     df, meta = pyreadstat.read_sav(filepath)
-    if cleanse:
-        df = standard_cleanse(df)
     return df, meta
 
 
-def standard_cleanse(df, keep_columns=[]):
+def standard_cleanse(df, spam_ok=False, keep_columns=[]):
     """The qualtrics file comes baked with some columns we don't need.
     Make sure they are all "in order" or as expected,
     and then take them off the dataframe.
     Nothing is specific to this study here.
 
+    Spam might be okay, for example with CE stuff.
+
     Removes non-anonymous links (pilot participants)
     and those who didn't finish (actually not sure about the latter).
+    
+    https://www.qualtrics.com/support/survey-platform/data-and-analysis-module/data/download-data/understanding-your-dataset/
     """
 
     # Exclude any submissions prior to the original study advertisement.
@@ -71,7 +73,12 @@ def standard_cleanse(df, keep_columns=[]):
     # This is also redundnat but make sure "IP Address" is here (just indicates normal response, IP was not collected).
     # df = df.query("Status=='IP Address'")
     # assert df["Status"].eq("IP Address").all(), "All surveys should have come from the anonymous link."
-    assert df["Status"].eq(0).all(), "All surveys should have come from the anonymous link."
+    acceptable_statuses = [0]
+    if spam_ok:
+        acceptable_statuses.append(8)
+    ## !! these response keys are also in <meta>
+    ## !! so could actually print them out or check more explicitly.
+    assert df["Status"].isin(acceptable_statuses).all(), "Found >= 1 unacceptable Status."
 
     ##### Remove unfinished surveys.
     ##### (This only catches those that left early,
