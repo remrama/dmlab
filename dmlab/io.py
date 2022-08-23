@@ -33,9 +33,7 @@ def export_dataframe(
     Tab separation and "n/a" are BIDS-motivated.
     """
     float_format = f"%.{decimals}f"
+    filepath = ensure_path_is_pathlib(filepath)
+    filepath.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(filepath, float_format=float_format,
         sep=sep, na_rep=na_rep, index=index, **kwargs)
-
-# def make_pathdir_if_not_exists(filepath: str):
-#     directory = os.path.dirname(filepath)
-#     os.makedirs(directory, exist_ok=True)
