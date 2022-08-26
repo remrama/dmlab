@@ -26,8 +26,9 @@ __all__ = [
     "segment_fixed_size",
     "segment_fixed_count",
 
-    "load_liwc_dictionary",
-    "build_liwc_dictionary",
+    "liwc_write2dic",
+    "liwc_excel2dic",
+    "liwc_load_dic",
     "liwc_tokenize",
     "liwc_single_doc",
     
@@ -248,16 +249,83 @@ def segment_fixed_count(l, n):
         yield l[si:si+(d+1 if i < r else d)]
 
 
+
 ########################################################
 # LIWC
 ########################################################
 
-def build_liwc_dictionary():
-    # See lucidemo code, among others.
-    raise NotImplementedError
+
+def liwc_write2dic(dictionary, export_filepath):
+    """Write a LIWC dictionary (.dic) file.
+    
+    Parameters
+    ----------
+
+    dictionary : dict
+        k, v pairs of category, word_list
+        Will be numbered according to order of dictionary.
+        Example: dict(big=["large", "huge"], small=["tiny", "short"])
+    """
+    export_filepath = ensure_path_is_pathlib(export_filepath)
+    assert export_filepath.stem == ".dic"
+    assert isinstance(dictionary, dict)
+    assert all([ isinstance(v, list) for v in dictionary.values() ])
+
+    # lowercase all the category names
+    dictionary = { c.lower(): wlist for c, wlist in dictionary.items() }
+
+    # each category needs a number, that's how the LIWC dic files work
+    category_ids = { d: i+1 for i, d in enumerate(dictionary.keys()) }
+
+    # get a list of all the words of all categories, the whole vocabulary
+    vocabulary = sorted(set([ w for wlist in dictionary.values() for w in wlist ]))
+    # vocabulary = sorted(set(filter(lambda v: v==v, df.values.flat)))
+
+    with open(export_filepath, "wt", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f, delimiter="\t")
+
+        # write the header with all the category IDs
+        writer.writerow("%")
+        for cat, cat_id in category_ids.items():
+            writer.writerow([cat_id, cat])
+        writer.writerow("%")
+
+        # write all the vocabulary words and their corresponding category IDs
+        for word in vocabulary:
+            row_data = [word]
+            # find the categories this word is in and add them to row
+            for cat, word_list in dictionary.items():
+                if word in word_list:
+                    cat_id = category_ids[cat]
+                    row_data.append(cat_id)
+            writer.writerow(row_data)
 
 
-def load_liwc_dictionary(dictionary):
+def liwc_excel2dic(excel_filepath):
+    import_filepath = ensure_path_is_pathlib(excel_filepath)
+    assert "LIWC2015" in import_filepath.stem
+    assert import_filepath.suffix == ".xlsx"
+    export_filepath = import_filepath.with_suffix(".dic")
+    # Load in the full 2015 dictionary via excel file.
+    df = pd.read_excel(filepath, header=3)
+    df = df.iloc[1:].reset_index(drop=True)
+    # categories = [ c.split("\n")[1] for c in df.columns if "\n" in c ]
+
+    # generate a dictionary dictionary! :///
+    # each key, item pair is a category_name, list_of_words
+    dictionary = {}
+    for col in df:
+        if "\n" in col: # reset
+            category = col.split("\n")[1]
+            words = df[col].dropna().tolist()
+            dictionary[category] = words
+        else:
+            more_words = df[col].dropna().tolist()
+            dictionary[category].extend(more_words)
+    liwc_write2dic(dictionary, export_filepath)
+
+
+def liwc_load_dic(dictionary):
     """
     Parameters
     ----------
@@ -280,6 +348,20 @@ def load_liwc_dictionary(dictionary):
     lexicon, category_names_ = liwc.read_dic(dict_path) # { word: category_list }
     return parse, category_names, lexicon
 
+def merge_dictionaries(dictionary_list):
+    """
+    """
+    dictionary_inv = {}
+    for dict_path in dictionary_list:
+        lexicon, _ = liwc.read_dic(dict_path)
+        for word, category_list in lexicon.items():
+            if word in dictionary_inv:
+                dictionary_inv[word].extend(category_list)
+            else:
+                dictionary_inv[word] = category_list
+    dictionary_inv = { k: set(v) for k, v in dictionary_inv }
+    liwc_write2dic(dictionary_inv)
+
 
 LiwcTokenizer = nltk.tokenize.TweetTokenizer()
 def liwc_tokenize(s, min_tokens=5):
@@ -299,6 +381,7 @@ def liwc_tokenize(s, min_tokens=5):
     tokens = [ t.lower() for t in tokens if not (len(t)==1 and not t.isalpha()) ]
     if len(tokens) >= min_tokens:
         return tokens
+
 
 def liwc_single_doc(tokens, parser, categories, n_decimals=4):
     """Turn list of tokens into category frequencies.
@@ -322,43 +405,6 @@ def liwc_single_doc(tokens, parser, categories, n_decimals=4):
     # freqs = { cat: n/n_tokens for cat, n in counts.items() }
     freqs = [ round(100*((counts[c] if c in counts else 0)/n_tokens), n_decimals) for c in categories ]
     return freqs
-
-
-def liwc_run(
-        df,
-        dictionary_path,
-        export_path,
-    ):
-
-    # Open a file to write results to line-by-line.
-    with open(export_path, "wt", encoding="utf-8", newline="") as outfile:
-        writer = csv.writer(outfile, delimiter="\t", quoting=csv.QUOTE_NONE)
-
-        # Write header.
-        column_names = ["text_id"] + category_names
-        if SEGMENTED:
-            column_names.insert(1, "segment")
-        writer.writerow(column_names)
-
-        # loop over txt files
-        for fn in tqdm.tqdm(import_fnames, desc="LIWCing all txt files"):
-            with open(fn, "rt", encoding="utf-8") as infile:
-                txt = infile.read()
-            text_id = fname2id(fn)
-            if SEGMENTED:
-                # txt_segments = segment_txt(txt)
-                # if txt_segments is not None:
-                if (tokens := tokenize4liwc(txt)) is not None:
-                    for i, segment_toks in enumerate(segment(tokens)):
-                        results = liwc_tokens(segment_toks)
-                        rowdata = [text_id, i+1] + results
-                        writer.writerow(rowdata)
-            else:
-                if (tokens := tokenize4liwc(txt)) is not None:
-                    results = liwc_tokens(tokens)
-                    rowdata = [text_id] + results
-                    writer.writerow(rowdata)
-
 
 
 
@@ -494,3 +540,4 @@ def plot_timecourse(
         counts, bins, bars = axt.hist(hist_data, **hist_kwargs)
 
     return fig, hist_df
+    
