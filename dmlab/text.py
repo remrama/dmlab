@@ -383,7 +383,7 @@ def liwc_tokenize(s, min_tokens=5):
         return tokens
 
 
-def liwc_single_doc(tokens, parser, categories, n_decimals=4):
+def liwc_single_doc(tokens, parser, categories, n_decimals=6):
     """Turn list of tokens into category frequencies.
     
     Parameters
