@@ -2,12 +2,18 @@
 
 import pathlib
 
-# import colorcet as cc
+import colorcet as cc
 import matplotlib.pyplot as plt
 
 from .io import *
 
 def cmap2hex(cmap, n_intervals) -> list:
+    if isinstance(cmap, str):
+        if (cmap := cc.cm.get(cmap)) is None:
+            try:
+                cmap = plt.get_cmap(cmap)
+            except ValueError as e:
+                raise e
     assert isinstance(cmap, plt.matplotlib.colors.LinearSegmentedColormap)
     stops = [ 0 + x*1/(n_intervals-1) for x in range(n_intervals) ] # np.linspace
     hex_codes = []
