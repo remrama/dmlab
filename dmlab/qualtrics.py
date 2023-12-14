@@ -1,8 +1,8 @@
 """Tools for handling Qualtrics data.
 Requires SPSS output (it has more metadata than csv output).
 """
-
 import time
+from types import GeneratorType
 
 import numpy as np
 import pyreadstat
@@ -23,7 +23,7 @@ __all__ = [
 def latest_sourcepath(filepaths):
     """Sort default qualtrics filenames by date and return latest.
     """
-    assert isinstance(filepaths, list)
+    assert isinstance(filepaths, list) or isinstance(filepaths, GeneratorType)
     assert len(set([ f.parent for f in filepaths ])) == 1, "All filenames should be from the same directory"
     # Find most recent filename.
     date_strings = [ x.stem.split("_", 1)[1] for x in filepaths ]
@@ -39,7 +39,7 @@ def load_spss(filepath):
     return df, meta
 
 
-def standard_cleanse(df, spam_ok=False, keep_columns=[]):
+def cleanse(df, spam_ok=False, keep_columns=[]):
     """The qualtrics file comes baked with some columns we don't need.
     Make sure they are all "in order" or as expected,
     and then take them off the dataframe.
@@ -128,13 +128,18 @@ def validate_likert_scales(meta, vars_to_validate):
     Could be remapped but it's easier and safer to fix
     the source of the problem in Qualtrics.
     """
+    msgs = []
     for var in vars_to_validate:
         if var in meta.variable_value_labels:
             levels = meta.variable_value_labels[var]
             values = list(levels.keys())
-            assert values[0] == 1, f"{var} scale doesn't start at 1. Recode values in Qualtrics and re-export."
-            assert values == sorted(values), f"{var} scale is not in increasing order. Recode values in Qualtrics and re-export."
-            assert not np.any(np.diff(values) != 1), f"{var} scale is not linear. Recode values in Qualtrics and re-export."
+            if values[0] != 1:
+                msgs.append(f"{var} scale doesn't start at 1. Recode values in Qualtrics and re-export.")
+            if values != sorted(values):
+                msgs.append(f"{var} scale is not in increasing order. Recode values in Qualtrics and re-export.")
+            if np.any(np.diff(values) != 1):
+                msgs.append(f"{var} scale is not linear. Recode values in Qualtrics and re-export.")
+    assert not msgs, "\n".join(msgs)
 
 def generate_bids_sidecar(df, meta, survey_description):
     """Returns a dictionary with column info in BIDS format."""

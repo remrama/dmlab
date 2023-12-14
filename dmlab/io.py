@@ -23,7 +23,6 @@ def export_json(obj: dict, filepath: str, mode: str="x", **kwargs):
 def export_dataframe(
         df,
         filepath,
-        decimals=2,
         sep="\t",
         na_rep="n/a",
         index=False,
@@ -32,8 +31,6 @@ def export_dataframe(
     """Wrapper set with preferred defaults.
     Tab separation and "n/a" are BIDS-motivated.
     """
-    float_format = f"%.{decimals}f"
     filepath = ensure_path_is_pathlib(filepath)
     filepath.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(filepath, float_format=float_format,
-        sep=sep, na_rep=na_rep, index=index, **kwargs)
+    df.to_csv(filepath, sep=sep, na_rep=na_rep, index=index, **kwargs)
